@@ -1,36 +1,113 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RemesaAI
 
-## Getting Started
+**Voice-first stablecoin remittance US → Mexico.**
+Say one sentence in Spanish, send USDC on Base, recipient picks up cash at any OXXO.
 
-First, run the development server:
+> Submission for **Ethereum México 2026 Hackathon** — Tracks: Stablecoins, Payments, AI × Blockchain.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+[Live demo](https://remesa-ai.vercel.app) · [Demo video (2 min)](#demo-video) · [Pitch deck](#pitch)
+
+---
+
+## The problem
+
+Mexican workers in the US send **$63B/year** home. Western Union charges **8–15 USD per transfer**, takes hours, and requires both sides to walk into a branch with ID.
+
+Stablecoins on L2s can move the same money in seconds for **fractions of a cent**. But nobody's grandma is opening MetaMask.
+
+## What RemesaAI does
+
+1. Worker opens the app on their phone and **says** the request in Spanish — _"envía 200 dólares a mi mamá en Puebla"_.
+2. A Claude agent parses the voice into a structured intent and shows a quote: amount, fees, ETA.
+3. One tap signs a real USDC transfer on **Base L2**.
+4. Recipient receives a link + **8-character OXXO pickup code**. Cash, in any OXXO, in 2 minutes.
+
+No bank account. No KYC for the recipient. No 30-page MetaMask onboarding.
+
+## Architecture
+
+```
+┌────────────────┐    voice    ┌──────────────────┐
+│ Mobile browser │  ─────────► │ /api/agent       │
+│ (sender)       │             │ Claude Sonnet 4.5│  ── structured intent
+└────────────────┘             └──────────────────┘
+        │
+        │ sign (embedded burner wallet, viem)
+        ▼
+┌────────────────────────────┐
+│ USDC contract (Base Sepolia)│  ── real onchain tx
+└────────────────────────────┘
+        │
+        │ pickup code + amount in shareable URL
+        ▼
+┌──────────────────┐
+│ /recibir/[code]  │  ── recipient view (OXXO code, map, instructions)
+└──────────────────┘
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Next.js 16** (App Router, Turbopack, React 19.2) — frontend + API routes
+- **AI SDK** + `@ai-sdk/anthropic` (Claude Sonnet 4.5) — voice intent parsing with `generateObject` + Zod schema
+- **viem 2** — embedded burner wallet, USDC ERC-20 transfer encoding, Base Sepolia RPC
+- **Web Speech API** — `es-MX` recognition (no third-party speech provider for the MVP)
+- **Tailwind CSS v4** + custom primitives — mobile-first UI
+- **Vercel** — hosting
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### What's onchain (real)
 
-## Learn More
+- USDC on Base Sepolia: `0x036CbD53842c5426634e7929541eC2318f3dCF7e`
+- ERC-20 `transfer` signed client-side by the user's embedded wallet
+- Tx hash linked to Basescan from the success screen and the recipient view
 
-To learn more about Next.js, take a look at the following resources:
+### What's mocked (for the MVP)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Off-ramp to MXN cash**: in production this is Bitso / Stori / Felix's OXXO settlement rail. For the demo we generate the pickup code and recipient UX; the cash leg is a stub.
+- **FX rate**: static USD→MXN reference (`src/lib/fx.ts`). In production we'd quote from Bitso every render.
+- **Embedded wallet**: a burner key in `localStorage` for fast demoing. In production this is a passkey-backed smart wallet (Privy, Coinbase Smart Wallet) with gasless UX via paymaster.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Why this wins the LATAM track
 
-## Deploy on Vercel
+- **Real problem, massive market**: $63B/year remittance corridor, 95%+ of recipients are unbanked or under-banked, OXXO is the de-facto cash rail.
+- **Voice-first**: bypasses literacy, language, and crypto-onboarding barriers all at once.
+- **Real L2 settlement**: every transfer is a real Base USDC tx — auditable, sub-cent fees, ~2-second finality.
+- **Bilingual**: ES/EN parser, ES-first UI.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Run locally
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+git clone <repo>
+cd remesa-ai
+npm install
+cp .env.example .env.local
+# optional: set ANTHROPIC_API_KEY for Claude-powered parsing
+#  (without it, /api/agent falls back to a deterministic regex parser that
+#   handles the typical phrasings used in the demo)
+npm run dev
+```
+
+Open `http://localhost:3000`, tap the mic, and speak. Your browser will create a burner wallet on first load — fund it with:
+
+- [Circle USDC faucet](https://faucet.circle.com/) (select Base Sepolia)
+- [Coinbase ETH faucet](https://portal.cdp.coinbase.com/products/faucet) (for gas)
+
+Then send. Settlement is a real Base Sepolia tx, verifiable on [Basescan](https://sepolia.basescan.org).
+
+## Judges: how to evaluate fast
+
+1. Open the deployed URL on your phone.
+2. **Don't have testnet funds?** Click _"Para jueces: ver la vista del destinatario →"_ at the bottom of the landing to jump straight to a pre-built recipient view (OXXO code, instructions, the works).
+3. Try the voice flow: tap the mic, say _"envía 200 dólares a mi mamá en Puebla"_ — quote renders in under a second.
+4. To complete a real onchain tx, fund the burner wallet using the in-app faucet links and tap "Confirmar y enviar". You'll get a Basescan link back.
+
+## Roadmap (post-hackathon)
+
+- **Production off-ramp**: integrate Bitso B2B API for SPEI/OXXO settlement.
+- **Smart wallets**: Coinbase Smart Wallet / Privy + Base Paymaster for gasless UX.
+- **KYC layer**: Persona or Veriff for sender side; recipient stays anonymous up to legal cash-pickup thresholds.
+- **WhatsApp interface**: voice-note → remittance, no app install. WhatsApp Business API.
+- **Multi-rail**: extend to Centroamérica (Western Union has the same lock-in there).
+
+## License
+
+MIT. Built in 36 hours for Ethereum México 2026.
