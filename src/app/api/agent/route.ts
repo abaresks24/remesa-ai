@@ -1,4 +1,4 @@
-import { anthropic } from "@ai-sdk/anthropic";
+import { mistral } from "@ai-sdk/mistral";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { SYSTEM_PROMPT } from "@/ai/prompt";
@@ -15,27 +15,29 @@ const IntentSchema = z.object({
   missing: z.array(z.string()).optional(),
 });
 
+const MODEL_ID = process.env.MISTRAL_MODEL ?? "mistral-large-latest";
+
 export async function POST(request: Request) {
   const { text } = (await request.json()) as { text?: string };
   if (!text || typeof text !== "string") {
     return Response.json({ error: "text required" }, { status: 400 });
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!process.env.MISTRAL_API_KEY) {
     const intent: Intent = fallbackParse(text);
     return Response.json({ intent, source: "regex-fallback" });
   }
 
   try {
     const { object } = await generateObject({
-      model: anthropic("claude-sonnet-4-5"),
+      model: mistral(MODEL_ID),
       system: SYSTEM_PROMPT,
       prompt: text,
       schema: IntentSchema,
       maxRetries: 1,
     });
     const intent: Intent = { ...object, raw: text };
-    return Response.json({ intent, source: "claude" });
+    return Response.json({ intent, source: `mistral:${MODEL_ID}` });
   } catch (err) {
     console.error("agent error", err);
     const intent: Intent = fallbackParse(text);

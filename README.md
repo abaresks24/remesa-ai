@@ -27,10 +27,10 @@ No bank account. No KYC for the recipient. No 30-page MetaMask onboarding.
 ## Architecture
 
 ```
-┌────────────────┐    voice    ┌──────────────────┐
-│ Mobile browser │  ─────────► │ /api/agent       │
-│ (sender)       │             │ Claude Sonnet 4.5│  ── structured intent
-└────────────────┘             └──────────────────┘
+┌────────────────┐    voice    ┌────────────────────┐
+│ Mobile browser │  ─────────► │ /api/agent         │
+│ (sender)       │             │ mistral-large-latest│  ── structured intent
+└────────────────┘             └────────────────────┘
         │
         │ sign (embedded burner wallet, viem)
         ▼
@@ -48,7 +48,7 @@ No bank account. No KYC for the recipient. No 30-page MetaMask onboarding.
 ### Stack
 
 - **Next.js 16** (App Router, Turbopack, React 19.2) — frontend + API routes
-- **AI SDK** + `@ai-sdk/anthropic` (Claude Sonnet 4.5) — voice intent parsing with `generateObject` + Zod schema
+- **AI SDK** + `@ai-sdk/mistral` (`mistral-large-latest`) — voice intent parsing with `generateObject` + Zod schema
 - **viem 2** — embedded burner wallet, USDC ERC-20 transfer encoding, Base Sepolia RPC
 - **Web Speech API** — `es-MX` recognition (no third-party speech provider for the MVP)
 - **Tailwind CSS v4** + custom primitives — mobile-first UI
@@ -80,7 +80,7 @@ git clone <repo>
 cd remesa-ai
 npm install
 cp .env.example .env.local
-# optional: set ANTHROPIC_API_KEY for Claude-powered parsing
+# optional: set MISTRAL_API_KEY for LLM-powered parsing
 #  (without it, /api/agent falls back to a deterministic regex parser that
 #   handles the typical phrasings used in the demo)
 npm run dev
