@@ -5,7 +5,7 @@ Say one sentence in Spanish, send USDC on Base, recipient picks up cash at any O
 
 > Submission for **Ethereum México 2026 Hackathon** — Tracks: Stablecoins, Payments, AI × Blockchain.
 
-[Live demo](https://remesa-ai.vercel.app) · [Demo video (2 min)](#demo-video) · [Pitch deck](#pitch)
+**[Live demo →](https://remesa-ai.vercel.app)** · [GitHub](https://github.com/abaresks24/remesa-ai)
 
 ---
 
